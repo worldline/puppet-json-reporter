@@ -34,21 +34,6 @@
 # * Justin Lambert <mailto:jlambert@letsevenup.com>
 # * Richard Pijnenburg <mailto:richard.pijnenburg@elastic.co>
 #
-class logstash_reporter (
-  $logstash_host = '127.0.0.1',
-  $logstash_port = 5999,
-  $config_file   = $::logstash_reporter::params::config_file,
-  $config_owner  = $::logstash_reporter::params::config_owner,
-  $config_group  = $::logstash_reporter::params::config_group,
-) inherits logstash_reporter::params {
-
-  file { $config_file:
-    ensure  => file,
-    owner   => $config_owner,
-    group   => $config_group,
-    mode    => '0444',
-    content => template('logstash_reporter/logstash.yaml.erb'),
-  }
-
+class json_reporter {
 }
 

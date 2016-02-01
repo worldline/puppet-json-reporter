@@ -1,32 +1,19 @@
 require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'puppet'
-require 'socket'
-require 'timeout'
 require 'json'
-require 'yaml'
 require 'time'
 
 unless Puppet.version >= '2.6.5'
   fail "This report processor requires Puppet version 2.6.5 or later"
 end
 
-SEPARATOR = [Regexp.escape(File::SEPARATOR.to_s), Regexp.escape(File::ALT_SEPARATOR.to_s)].join
-
-Puppet::Reports.register_report(:logstash) do
-
-  config_file = File.join([File.dirname(Puppet.settings[:config]), "logstash.yaml"])
-  unless File.exist?(config_file)
-    raise(Puppet::ParseError, "Logstash report config file #{config_file} missing or not readable")
-  end
-  CONFIG = YAML.load_file(config_file)
+Puppet::Reports.register_report(:json) do
 
   desc <<-DESCRIPTION
-  Reports status of Puppet Runs to a Logstash TCP input
+  Reports status of Puppet Runs to a JSOn file for later Logstash ingestion
   DESCRIPTION
 
   def process
-
-    validate_host(self.host)
 
     # Push all log lines as a single message
     logs = []
@@ -55,23 +42,12 @@ Puppet::Reports.register_report(:logstash) do
         event["metrics"][k][val[1].tr('[A-Z ]', '[a-z_]')] = val[2]
       end
     end
+        
+    destfile = File.join([Puppet.settings[:statedir], "last_run_report.json"])
 
-    begin
-      Timeout::timeout(CONFIG[:timeout]) do
-        json = event.to_json
-        ls = TCPSocket.new "#{CONFIG[:host]}" , CONFIG[:port]
-        ls.puts json
-        ls.close
-      end
-    rescue Exception => e
-      Puppet.err("Failed to write to #{CONFIG[:host]} on port #{CONFIG[:port]}: #{e.message}")
+    File.open(destfile, 'w+', 0644) do |f|
+	f.puts(event.to_json)
     end
-  end
 
-  def validate_host(host)
-    if host =~ Regexp.union(/[#{SEPARATOR}]/, /\A\.\.?\Z/)
-      raise ArgumentError, "Invalid node name #{host.inspect}"
-    end
   end
-  module_function :validate_host
 end
